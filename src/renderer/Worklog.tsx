@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import io, { Socket } from 'socket.io-client';
+import io from 'socket.io-client';
+
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,7 +23,7 @@ export default function ({
   refreshToken,
   BACKEND,
 }: IWorklogProps) {
-  const ioRef = useRef<null | Socket>(null);
+  const ioRef = useRef<null | any>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   const accessTokenRef = useRef(accessToken);
