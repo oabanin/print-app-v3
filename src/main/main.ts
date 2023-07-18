@@ -12,6 +12,10 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import { v4 as uuidv4 } from 'uuid';
+
+import os from 'os';
+import { promises as fs } from 'fs';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
@@ -25,10 +29,58 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
+const isWindows = os.platform() === 'win32';
+const platform = isWindows ? 'win' : 'mac';
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
+});
+
+ipcMain.on('label', async (_, data) => {
+  try {
+    log.info('IPC received label event', data);
+
+    const parsed = JSON.parse(data);
+    const isZPL = parsed.url.includes('.zpl');
+
+    const saveFilePath = path.join(
+      app.getPath('temp'),
+      `${parsed.otn}-${uuidv4().substring(0, 8)}.${isZPL ? 'zpl' : 'pdf'}`
+    );
+    log.info(`Generated save file path ${saveFilePath}`);
+
+    const res = await fetch(parsed.url);
+
+    let label;
+    if (isZPL) {
+      log.info('ZPL branch');
+      label = await res.text();
+    } else {
+      log.info('PDF branch');
+      // @ts-ignore
+      label = await res.buffer(); // Don't know why this works.
+    }
+    log.info('label', { label });
+
+    await fs.writeFile(saveFilePath, label);
+
+    log.info('test print');
+
+    // const printers = await printUtils[platform].getPrinters();
+    // log.info('Available printers', JSON.stringify(printers));
+    // const defPrinter = await printUtils[platform].getDefaultPrinter();
+    // log.info('Default printer', JSON.stringify(defPrinter));
+    //
+    // log.info('Start printing');
+    // const printResult = await printUtils[platform].print(saveFilePath);
+    // log.info('Print result', JSON.stringify(printResult));
+
+    // TODO signal back
+  } catch (err) {
+    log.error('Print handler catch', err);
+    // TODO signal back
+  }
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -61,6 +113,8 @@ const createWindow = async () => {
     await installExtensions();
   }
 
+  log.info(`OS: ${os.platform()} - ${os.release()}`);
+
   const RESOURCES_PATH = app.isPackaged
     ? path.join(process.resourcesPath, 'assets')
     : path.join(__dirname, '../../assets');
@@ -71,8 +125,8 @@ const createWindow = async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
-    width: 1024,
-    height: 728,
+    width: 1024, // 400
+    height: 728, // 700
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged
