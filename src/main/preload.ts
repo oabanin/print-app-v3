@@ -21,6 +21,13 @@ const electronHandler = {
     once(channel: Channels, func: (...args: unknown[]) => void) {
       ipcRenderer.once(channel, (_event, ...args) => func(...args));
     },
+
+    log(name: string, data: any) {
+      ipcRenderer.send('log', name, data);
+    },
+    printLabel(data: any) {
+      ipcRenderer.send('label', data);
+    },
   },
 };
 
