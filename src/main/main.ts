@@ -13,7 +13,6 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { v4 as uuidv4 } from 'uuid';
-import { print as winPrint } from 'pdf-to-printer';
 import { print as macPrint } from 'unix-print';
 import fetch from 'node-fetch';
 
@@ -35,15 +34,6 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-
-const printUtils = {
-  mac: {
-    print: macPrint,
-  },
-  win: {
-    print: winPrint,
-  },
-};
 
 const isWindows = os.platform() === 'win32';
 
@@ -157,7 +147,7 @@ ipcMain.on('label', async (event, data) => {
     }
 
     // IF PDF on MAC
-    const printResult = await printUtils[platform].print(saveFilePath);
+    const printResult = await macPrint(saveFilePath);
     log.info('Print result', JSON.stringify(printResult));
   } catch (err) {
     if (err instanceof Error) {
