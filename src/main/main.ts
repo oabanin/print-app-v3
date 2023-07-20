@@ -123,7 +123,6 @@ ipcMain.on('label', async (event, data) => {
       await fs.writeFile(saveFilePath, Buffer.from(label));
     }
 
-    const platform = isWindows ? 'win' : 'mac';
     log.info('Start printing');
 
     if (isWindows) {
@@ -200,7 +199,7 @@ const createWindow = async () => {
   mainWindow = new BrowserWindow({
     show: false,
     width: 600, // 400
-    height: 425, // 700
+    height: 700, // 700
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged
