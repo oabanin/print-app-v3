@@ -4,6 +4,32 @@ import io from 'socket.io-client';
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
 
+const queue: any = [];
+
+let timeout: ReturnType<typeof setTimeout>;
+
+const TimeoutBetweenPrintingInSec = 1;
+function processData(data: any) {
+  return new Promise((resolve) => {
+    setTimeout(async () => {
+      window.electron.ipcRenderer.printLabel(JSON.stringify(data));
+      resolve(data);
+    }, TimeoutBetweenPrintingInSec * 1000);
+  });
+}
+
+function insertQueue(msg: any) {
+  // called whenever a new message arrives
+  queue.push(msg);
+}
+
+function getFromQueue() {
+  if (queue.length > 0) {
+    return queue.shift();
+  }
+  return undefined;
+}
+
 interface IWorklogProps {
   handleLogout(): void;
   BACKEND: string;
@@ -111,7 +137,7 @@ export default function ({
         },
       ]);
 
-      window.electron.ipcRenderer.printLabel(JSON.stringify(data));
+      insertQueue(data);
     });
 
     window.electron.ipcRenderer.on('ipc-logs', (arg) => {
@@ -125,7 +151,29 @@ export default function ({
       ]);
     });
 
+    (function executorService() {
+      return new Promise((resolve) => {
+        timeout = setTimeout(async () => {
+          const data = getFromQueue();
+          // console.log('Started processing', data);
+          if (data) {
+            const resp = await processData(data); // waiting for async processing of message to finish
+            resolve(resp);
+          }
+          resolve(undefined);
+        }, 2000);
+      })
+        .then(() => {
+          return true;
+        })
+        .catch(() => {})
+        .finally(() => {
+          executorService();
+        });
+    })();
+
     return () => {
+      clearTimeout(timeout);
       if (ioRef.current) {
         ioRef.current.disconnect();
       }

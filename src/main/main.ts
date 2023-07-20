@@ -15,7 +15,7 @@ import log from 'electron-log';
 import { v4 as uuidv4 } from 'uuid';
 import { print as macPrint } from 'unix-print';
 import fetch from 'node-fetch';
-import { webusb, WebUSBDevice } from 'usb';
+import { webusb } from 'usb';
 
 import os from 'os';
 import { promises as fs } from 'fs';
@@ -39,8 +39,6 @@ let mainWindow: BrowserWindow | null = null;
 const isWindows = os.platform() === 'win32';
 
 const gotTheLock = app.requestSingleInstanceLock();
-
-let device: USBDevice;
 
 if (!gotTheLock) {
   log.info('The second instance has been launched. Forced to close');
@@ -144,11 +142,9 @@ ipcMain.on('label', async (event, data) => {
 
     // IF ZPL on MAC
     if (isZPL) {
-      if (!device) {
-        device = await webusb.requestDevice({
-          filters: [{}],
-        });
-      }
+      const device = await webusb.requestDevice({
+        filters: [{}],
+      });
 
       log.info('Printing via WebUsb Device on MacOS', device);
 
