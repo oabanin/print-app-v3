@@ -188,6 +188,9 @@
     "win": {
       "target": [
         "nsis"
+      ],
+      "extraFiles": [
+        "./bin/**"
       ]
     },
     "linux": {

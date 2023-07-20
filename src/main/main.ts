@@ -23,7 +23,6 @@ class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
     autoUpdater.logger = log;
-    autoUpdater.checkForUpdatesAndNotify();
   }
 }
 
@@ -31,15 +30,53 @@ let mainWindow: BrowserWindow | null = null;
 
 const isWindows = os.platform() === 'win32';
 const platform = isWindows ? 'win' : 'mac';
-ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
-});
 
-ipcMain.on('label', async (_, data) => {
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  log.info('The second instance has been launched. Forced to close');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+ipcMain.on('label', async (event, data) => {
   try {
     log.info('IPC received label event', data);
+    event.reply('ipc-logs', 'tetete');
+    if (!mainWindow) {
+      log.info('BrowserWindow is not found');
+      return;
+    }
+
+    const printers = await mainWindow.webContents.getPrintersAsync();
+
+    if (printers.length === 0) {
+      const msg = 'No printers found on printing';
+      log.info(msg);
+      event.reply('ipc-logs', msg);
+      return;
+    }
+
+    const defaultPrinter = printers.find((printer) => printer.isDefault);
+
+    if (!defaultPrinter) {
+      const msg = 'The default printer is not found';
+      log.info(msg);
+      event.reply('ipc-logs', msg);
+      return;
+    }
+
+    event.reply(
+      'ipc-logs',
+      `Default printer used for printing: ${defaultPrinter.displayName}`
+    );
 
     const parsed = JSON.parse(data);
     const isZPL = parsed.url.includes('.zpl');
@@ -64,8 +101,6 @@ ipcMain.on('label', async (_, data) => {
     log.info('label', { label });
 
     await fs.writeFile(saveFilePath, label);
-
-    log.info('test print');
 
     // const printers = await printUtils[platform].getPrinters();
     // log.info('Available printers', JSON.stringify(printers));
@@ -134,6 +169,14 @@ const createWindow = async () => {
         : path.join(__dirname, '../../.erb/dll/preload.js'),
     },
   });
+
+  const printers = await mainWindow.webContents.getPrintersAsync();
+
+  if (printers.length > 0) {
+    log.info(`Printers:`, printers);
+  } else {
+    log.info('No printers found on application start');
+  }
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 

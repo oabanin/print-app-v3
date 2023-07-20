@@ -112,6 +112,24 @@ export default function ({
 
       window.electron.ipcRenderer.printLabel(JSON.stringify(data));
     });
+
+    window.electron.ipcRenderer.on('ipc-logs', (arg) => {
+      setLogEntries((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          timeStamp: dayjs().format('DD-MM-YYYY HH:mm'),
+          message: `Received label: ${arg}`,
+        },
+      ]);
+    });
+
+    return () => {
+      if (ioRef.current) {
+        ioRef.current.disconnect();
+      }
+    };
+
     // eslint-disable-next-line
   }, []);
 
