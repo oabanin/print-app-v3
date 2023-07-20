@@ -101,12 +101,13 @@ export default function ({
       ]);
     });
     ioRef.current.on('label', (data: any) => {
+      const isZPL = data.url.includes('.zpl');
       setLogEntries((prev) => [
         ...prev,
         {
           id: uuidv4(),
           timeStamp: dayjs().format('DD-MM-YYYY HH:mm'),
-          message: `Received label: ${data.otn}`,
+          message: `Received label: ${data.otn} (${isZPL ? 'ZPL' : 'PDF'})`,
         },
       ]);
 

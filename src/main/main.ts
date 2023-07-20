@@ -15,10 +15,12 @@ import log from 'electron-log';
 import { v4 as uuidv4 } from 'uuid';
 import { print as winPrint } from 'pdf-to-printer';
 import { print as macPrint } from 'unix-print';
+import fetch from 'node-fetch';
 
 import os from 'os';
-import { promises as fs } from 'fs';
+import { promises as fs, createWriteStream } from 'fs';
 import * as util from 'node:util';
+
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
@@ -108,7 +110,6 @@ ipcMain.on('label', async (event, data) => {
     let fileArgs;
 
     if (isZPL) {
-      event.reply('ipc-logs', `ZPL format`);
       log.info('ZPL branch');
       label = await res.text();
 
@@ -118,18 +119,15 @@ ipcMain.on('label', async (event, data) => {
 
       file = path.join(pathToRawPrint, 'rawprint.exe');
       fileArgs = [defaultPrinter.name, saveFilePath];
+      await fs.writeFile(saveFilePath, label);
     } else {
-      event.reply('ipc-logs', `PDF format`);
       log.info('PDF branch');
-      // @ts-ignore
-      label = await res.buffer(); // Don't know why this works.
+      label = await res.arrayBuffer(); // Don't know why this works.
+      const fileWriteStream = createWriteStream(saveFilePath);
+      res?.body?.pipe(fileWriteStream);
     }
     log.info('label', { label });
-
-    await fs.writeFile(saveFilePath, label);
-
     const platform = isWindows ? 'win' : 'mac';
-
     log.info('Start printing');
 
     if (isZPL) {
