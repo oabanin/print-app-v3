@@ -124,7 +124,7 @@ ipcMain.on('label', async (event, data) => {
       file = path.join(pathToRawPrint, 'rawprint.exe');
       fileArgs = [defaultPrinter.name, saveFilePath];
       await fs.writeFile(saveFilePath, label);
-      log.info('label', { label });
+      // log.info('label', { label });
     } else {
       log.info('PDF branch');
       file = path.join(pathToRawPrint, 'SumatraPDF-3.4.6-32.exe');
@@ -143,7 +143,7 @@ ipcMain.on('label', async (event, data) => {
         event.reply('ipc-logs', `Error: ${stderr}`);
       } else {
         log.info('print result', stdout);
-        event.reply('ipc-logs', stdout);
+        // event.reply('ipc-logs', stdout);
       }
       return;
     }
