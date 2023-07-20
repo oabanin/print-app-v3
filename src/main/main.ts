@@ -103,7 +103,7 @@ ipcMain.on('label', async (event, data) => {
       label = await res.text();
 
       const pathToRawPrint = app.isPackaged
-        ? path.join(process.resourcesPath, 'bin', 'assets')
+        ? path.join(process.resourcesPath, 'bin')
         : path.join(__dirname, '..', '..', 'bin');
 
       // ('node', ['--version'])
