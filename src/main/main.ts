@@ -18,7 +18,7 @@ import { print as macPrint } from 'unix-print';
 import fetch from 'node-fetch';
 
 import os from 'os';
-import { promises as fs, createWriteStream } from 'fs';
+import { promises as fs } from 'fs';
 import * as util from 'node:util';
 
 import MenuBuilder from './menu';
@@ -114,54 +114,51 @@ ipcMain.on('label', async (event, data) => {
     let label;
     let file;
     let fileArgs;
+    const pathToRawPrint = app.isPackaged
+      ? path.join(process.resourcesPath, 'bin')
+      : path.join(__dirname, '..', '..', 'bin');
 
     if (isZPL) {
       log.info('ZPL branch');
       label = await res.text();
-
-      const pathToRawPrint = app.isPackaged
-        ? path.join(process.resourcesPath, 'bin')
-        : path.join(__dirname, '..', '..', 'bin');
-
       file = path.join(pathToRawPrint, 'rawprint.exe');
       fileArgs = [defaultPrinter.name, saveFilePath];
       await fs.writeFile(saveFilePath, label);
       log.info('label', { label });
     } else {
       log.info('PDF branch');
+      file = path.join(pathToRawPrint, 'SumatraPDF-3.4.6-32.exe');
+      fileArgs = ['-print-to-default', '-silent', saveFilePath];
       label = await res.arrayBuffer(); // Don't know why this works.
       await fs.writeFile(saveFilePath, Buffer.from(label));
-      // console.log(res);
-      // if (res?.body) {
-      //   const fileWriteStream = createWriteStream(saveFilePath);
-      //   res?.body?.pipe(fileWriteStream);
-      // }
     }
 
     const platform = isWindows ? 'win' : 'mac';
     log.info('Start printing');
 
-    if (isZPL) {
-      if (isWindows) {
-        const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
-        if (error) {
-          log.info('print error', stderr);
-          event.reply('ipc-logs', `Error: ${stderr}`);
-        } else {
-          log.info('print result', stdout);
-          event.reply('ipc-logs', stdout);
-        }
+    if (isWindows) {
+      const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
+      if (error) {
+        log.info('print error', stderr);
+        event.reply('ipc-logs', `Error: ${stderr}`);
       } else {
-        const msg = `ZPL printing is not currently supported on macOS. Try printing a PDF`;
-        log.info('Try', msg);
-        event.reply('ipc-logs', msg);
+        log.info('print result', stdout);
+        event.reply('ipc-logs', stdout);
       }
       return;
     }
 
+    // IF ZPL on MAC
+    if (isZPL) {
+      const msg = `ZPL printing is not currently supported on macOS. Try printing a PDF`;
+      log.info(msg);
+      event.reply('ipc-logs', msg);
+      return;
+    }
+
+    // IF PDF on MAC
     const printResult = await printUtils[platform].print(saveFilePath);
     log.info('Print result', JSON.stringify(printResult));
-    event.reply('ipc-logs', JSON.stringify(printResult));
   } catch (err) {
     if (err instanceof Error) {
       event.reply('ipc-logs', `Error: ${err.message}`);
