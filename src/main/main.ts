@@ -15,6 +15,7 @@ import log from 'electron-log';
 import { v4 as uuidv4 } from 'uuid';
 import { print as macPrint } from 'unix-print';
 import fetch from 'node-fetch';
+import { webusb, WebUSBDevice } from 'usb';
 
 import os from 'os';
 import { promises as fs } from 'fs';
@@ -39,6 +40,8 @@ const isWindows = os.platform() === 'win32';
 
 const gotTheLock = app.requestSingleInstanceLock();
 
+let device: USBDevice;
+
 if (!gotTheLock) {
   log.info('The second instance has been launched. Forced to close');
   app.quit();
@@ -51,6 +54,8 @@ if (!gotTheLock) {
     }
   });
 }
+
+// const labels = [];
 
 ipcMain.on('label', async (event, data) => {
   try {
@@ -139,9 +144,63 @@ ipcMain.on('label', async (event, data) => {
 
     // IF ZPL on MAC
     if (isZPL) {
-      const msg = `ZPL printing is not currently supported on macOS. Try printing a PDF`;
-      log.info(msg);
-      event.reply('ipc-logs', msg);
+      if (!device) {
+        device = await webusb.requestDevice({
+          filters: [{}],
+        });
+      }
+
+      log.info('Printing via WebUsb Device on MacOS', device);
+
+      if (!device.opened) await device.open();
+      await device.selectConfiguration(1);
+
+      if (!device.configuration) {
+        log.info('WebUsb device configuration ERROR');
+        await device.close();
+        return;
+      }
+      const { interfaceNumber } = device.configuration.interfaces[0];
+      await device.claimInterface(interfaceNumber);
+
+      const endpointNumberOUT =
+        device?.configuration?.interfaces[0]?.alternate?.endpoints?.find(
+          (obj) => obj?.direction === 'out'
+        )?.endpointNumber;
+
+      if (!endpointNumberOUT) {
+        log.info('WebUsb endpointNumberOUT ERROR');
+        await device.close();
+        return;
+      }
+
+      try {
+        const result = await device.transferOut(
+          endpointNumberOUT,
+          label as ArrayBuffer
+        );
+
+        // TODO: make a queue on the backend
+        // for (const buffer of labels) {
+        //   const res = await device.transferOut(endpointNumberOUT, buffer);
+        //   if (res && res.status !== 'ok') {
+        //     console.error(res);
+        //   }
+        // }
+
+        log.info('Result:', result);
+        await device.close();
+      } catch (e) {
+        await device.close();
+        if (e instanceof Error) {
+          event.reply('ipc-logs', e.message);
+        }
+        log.info('WebUsb ERROR:', e);
+      }
+
+      // const msg = `ZPL printing is not currently supported on macOS. Try printing a PDF`;
+      // log.info(msg);
+      // event.reply('ipc-logs', msg);
       return;
     }
 
