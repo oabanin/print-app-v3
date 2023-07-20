@@ -20,11 +20,11 @@ import * as util from 'node:util';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
-const { exec } = require('node:child_process');
+const { exec, execFile } = require('node:child_process');
 
 // const util = require('node:util');
 const execAsync = util.promisify(exec);
-
+const execFileAsync = util.promisify(execFile);
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -96,14 +96,19 @@ ipcMain.on('label', async (event, data) => {
     const res = await fetch(parsed.url);
 
     let label;
-    let command;
+    let file;
+    let fileArgs;
     if (isZPL) {
       log.info('ZPL branch');
       label = await res.text();
 
-      command = `${path.join(process.resourcesPath, 'rawprint.exe')} '${
-        defaultPrinter.name
-      }' '${saveFilePath}'`;
+      const pathToRawPrint = app.isPackaged
+        ? path.join(process.resourcesPath, 'bin', 'assets')
+        : path.join(__dirname, '..', '..', 'bin');
+
+      // ('node', ['--version'])
+      file = path.join(pathToRawPrint, 'rawprint.exe');
+      fileArgs = [defaultPrinter.name, saveFilePath];
     } else {
       log.info('PDF branch');
       // @ts-ignore
@@ -113,8 +118,9 @@ ipcMain.on('label', async (event, data) => {
 
     await fs.writeFile(saveFilePath, label);
 
-    log.info('print executing', { command });
-    const { stdout, stderr, error } = await execAsync(command);
+    log.info('print executing', file, fileArgs);
+    // const { stdout, stderr, error } = await execAsync(command);
+    const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
     if (error) {
       log.info('print error', stderr);
     } else {
@@ -170,8 +176,8 @@ const createWindow = async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
-    width: 1024, // 400
-    height: 728, // 700
+    width: 600, // 400
+    height: 425, // 700
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged

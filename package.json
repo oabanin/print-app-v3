@@ -189,9 +189,6 @@
       "target": [
         "nsis"
       ],
-      "extraFiles": [
-        "./bin/**"
-      ],
       "extraResources": [
         "./bin/**"
       ]
