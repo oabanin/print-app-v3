@@ -7,6 +7,11 @@
     "postinstall": "npm run rebuild && npm run link-modules",
     "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "usb": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/w3c-web-usb": "^1.0.6"
+  },
   "license": "UNLICENSED"
 }
