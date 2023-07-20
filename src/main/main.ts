@@ -101,10 +101,9 @@ ipcMain.on('label', async (event, data) => {
       log.info('ZPL branch');
       label = await res.text();
 
-      command = `${path.join(
-        __dirname,
-        '../../bin/rawprint.exe'
-      )} ${saveFilePath}`;
+      command = `${path.join(__dirname, '../../bin/rawprint.exe')} ${
+        defaultPrinter.name
+      } ${saveFilePath}`;
     } else {
       log.info('PDF branch');
       // @ts-ignore
