@@ -191,6 +191,9 @@
       ],
       "extraFiles": [
         "./bin/**"
+      ],
+      "extraResources": [
+        "./bin/**"
       ]
     },
     "linux": {
