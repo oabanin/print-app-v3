@@ -105,6 +105,12 @@ ipcMain.on('label', async (event, data) => {
 
     const res = await fetch(parsed.url);
 
+    if (res.ok) {
+      log.info('Label fetched from server');
+    } else {
+      log.info('Error: Label was not fetched from server');
+    }
+
     let label;
     let file;
     let fileArgs;
@@ -120,13 +126,18 @@ ipcMain.on('label', async (event, data) => {
       file = path.join(pathToRawPrint, 'rawprint.exe');
       fileArgs = [defaultPrinter.name, saveFilePath];
       await fs.writeFile(saveFilePath, label);
+      log.info('label', { label });
     } else {
       log.info('PDF branch');
       label = await res.arrayBuffer(); // Don't know why this works.
-      const fileWriteStream = createWriteStream(saveFilePath);
-      res?.body?.pipe(fileWriteStream);
+      await fs.writeFile(saveFilePath, Buffer.from(label));
+      // console.log(res);
+      // if (res?.body) {
+      //   const fileWriteStream = createWriteStream(saveFilePath);
+      //   res?.body?.pipe(fileWriteStream);
+      // }
     }
-    log.info('label', { label });
+
     const platform = isWindows ? 'win' : 'mac';
     log.info('Start printing');
 
@@ -150,6 +161,7 @@ ipcMain.on('label', async (event, data) => {
 
     const printResult = await printUtils[platform].print(saveFilePath);
     log.info('Print result', JSON.stringify(printResult));
+    event.reply('ipc-logs', JSON.stringify(printResult));
   } catch (err) {
     if (err instanceof Error) {
       event.reply('ipc-logs', `Error: ${err.message}`);
