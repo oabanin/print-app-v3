@@ -13,6 +13,8 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { v4 as uuidv4 } from 'uuid';
+import { print as winPrint } from 'pdf-to-printer';
+import { print as macPrint } from 'unix-print';
 
 import os from 'os';
 import { promises as fs } from 'fs';
@@ -20,10 +22,8 @@ import * as util from 'node:util';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
-const { exec, execFile } = require('node:child_process');
+const { execFile } = require('node:child_process');
 
-// const util = require('node:util');
-const execAsync = util.promisify(exec);
 const execFileAsync = util.promisify(execFile);
 class AppUpdater {
   constructor() {
@@ -34,8 +34,16 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
+const printUtils = {
+  mac: {
+    print: macPrint,
+  },
+  win: {
+    print: winPrint,
+  },
+};
+
 const isWindows = os.platform() === 'win32';
-const platform = isWindows ? 'win' : 'mac';
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -98,7 +106,9 @@ ipcMain.on('label', async (event, data) => {
     let label;
     let file;
     let fileArgs;
+
     if (isZPL) {
+      event.reply('ipc-logs', `ZPL format`);
       log.info('ZPL branch');
       label = await res.text();
 
@@ -106,10 +116,10 @@ ipcMain.on('label', async (event, data) => {
         ? path.join(process.resourcesPath, 'bin')
         : path.join(__dirname, '..', '..', 'bin');
 
-      // ('node', ['--version'])
       file = path.join(pathToRawPrint, 'rawprint.exe');
       fileArgs = [defaultPrinter.name, saveFilePath];
     } else {
+      event.reply('ipc-logs', `PDF format`);
       log.info('PDF branch');
       // @ts-ignore
       label = await res.buffer(); // Don't know why this works.
@@ -118,14 +128,30 @@ ipcMain.on('label', async (event, data) => {
 
     await fs.writeFile(saveFilePath, label);
 
-    log.info('print executing', file, fileArgs);
-    // const { stdout, stderr, error } = await execAsync(command);
-    const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
-    if (error) {
-      log.info('print error', stderr);
-    } else {
-      log.info('print result', stdout);
+    const platform = isWindows ? 'win' : 'mac';
+
+    log.info('Start printing');
+
+    if (isZPL) {
+      if (isWindows) {
+        const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
+        if (error) {
+          log.info('print error', stderr);
+          event.reply('ipc-logs', `Error: ${stderr}`);
+        } else {
+          log.info('print result', stdout);
+          event.reply('ipc-logs', stdout);
+        }
+      } else {
+        const msg = `ZPL printing is not currently supported on macOS. Try printing a PDF`;
+        log.info('Try', msg);
+        event.reply('ipc-logs', msg);
+      }
+      return;
     }
+
+    const printResult = await printUtils[platform].print(saveFilePath);
+    log.info('Print result', JSON.stringify(printResult));
   } catch (err) {
     if (err instanceof Error) {
       event.reply('ipc-logs', `Error: ${err.message}`);
