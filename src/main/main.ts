@@ -16,8 +16,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 import os from 'os';
 import { promises as fs } from 'fs';
+import * as util from 'node:util';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+
+const { exec } = require('node:child_process');
+
+// const util = require('node:util');
+const execAsync = util.promisify(exec);
 
 class AppUpdater {
   constructor() {
@@ -49,7 +55,7 @@ if (!gotTheLock) {
 ipcMain.on('label', async (event, data) => {
   try {
     log.info('IPC received label event', data);
-    event.reply('ipc-logs', 'tetete');
+
     if (!mainWindow) {
       log.info('BrowserWindow is not found');
       return;
@@ -90,9 +96,15 @@ ipcMain.on('label', async (event, data) => {
     const res = await fetch(parsed.url);
 
     let label;
+    let command;
     if (isZPL) {
       log.info('ZPL branch');
       label = await res.text();
+
+      command = `${path.join(
+        __dirname,
+        '../../bin/rawprint.exe'
+      )} ${saveFilePath}`;
     } else {
       log.info('PDF branch');
       // @ts-ignore
@@ -102,19 +114,18 @@ ipcMain.on('label', async (event, data) => {
 
     await fs.writeFile(saveFilePath, label);
 
-    // const printers = await printUtils[platform].getPrinters();
-    // log.info('Available printers', JSON.stringify(printers));
-    // const defPrinter = await printUtils[platform].getDefaultPrinter();
-    // log.info('Default printer', JSON.stringify(defPrinter));
-    //
-    // log.info('Start printing');
-    // const printResult = await printUtils[platform].print(saveFilePath);
-    // log.info('Print result', JSON.stringify(printResult));
-
-    // TODO signal back
+    log.info('print executing', { command });
+    const { stdout, stderr, error } = await execAsync(command);
+    if (error) {
+      log.info('print error', stderr);
+    } else {
+      log.info('print result', stdout);
+    }
   } catch (err) {
+    if (err instanceof Error) {
+      event.reply('ipc-logs', `Error: ${err.message}`);
+    }
     log.error('Print handler catch', err);
-    // TODO signal back
   }
 });
 

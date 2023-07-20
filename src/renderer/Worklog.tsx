@@ -119,7 +119,7 @@ export default function ({
         {
           id: uuidv4(),
           timeStamp: dayjs().format('DD-MM-YYYY HH:mm'),
-          message: `Received label: ${arg}`,
+          message: `${arg}`,
         },
       ]);
     });
