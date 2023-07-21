@@ -58,9 +58,12 @@ if (!gotTheLock) {
 ipcMain.on('label', async (event, data) => {
   try {
     log.info('APP Received label event', data);
+    event.reply('send-logs', data);
 
     if (!mainWindow) {
-      log.info('BrowserWindow is not found');
+      const errMsg = 'BrowserWindow is not found';
+      log.info(errMsg);
+      event.reply('send-logs', errMsg);
       return;
     }
 
@@ -89,14 +92,20 @@ ipcMain.on('label', async (event, data) => {
       app.getPath('temp'),
       `${parsed.otn}-${uuidv4().substring(0, 8)}.${isZPL ? 'zpl' : 'pdf'}`
     );
-    log.info(`Generated save file path ${saveFilePath}`);
+    const pathMsg = `Generated path ${saveFilePath}`;
+    log.info(pathMsg);
+    event.reply('send-logs', pathMsg);
 
     const res = await fetch(parsed.url);
 
     if (res.ok) {
-      log.info('Label fetched from server');
+      const msgLabel = 'Label fetched from server';
+      log.info(msgLabel);
+      event.reply('send-logs', msgLabel);
     } else {
-      log.info('Error: Label was not fetched from server');
+      const msgLabel = 'Error: Label was not fetched from server';
+      log.info(msgLabel);
+      event.reply('send-logs', msgLabel);
     }
 
     let label;
@@ -132,6 +141,7 @@ ipcMain.on('label', async (event, data) => {
           event.reply('ipc-logs', `Error: ${stderr}`);
         } else {
           log.info('print result', stdout);
+          event.reply('send-logs', stdout);
         }
       } catch (error) {
         log.info('print error', error);
@@ -149,6 +159,7 @@ ipcMain.on('label', async (event, data) => {
       // IF PDF on MAC
       const printResult = await macPrint(saveFilePath);
       log.info('Print result', JSON.stringify(printResult));
+      event.reply('send-logs', printResult);
       return;
     }
 
@@ -238,7 +249,7 @@ ipcMain.on('label', async (event, data) => {
         if (device.opened) await device.close();
         if (e instanceof Error) {
           event.reply('ipc-logs', e.message);
-          log.info('WebUsb ERROR:', e.message);
+          log.info(e.message);
         }
         event.reply('zpl-print-finished');
       }
@@ -248,6 +259,24 @@ ipcMain.on('label', async (event, data) => {
       event.reply('ipc-logs', `Error: ${err.message}`);
     }
     log.error('Print handler catch', err);
+  }
+});
+
+ipcMain.on('info', async (event) => {
+  if (!mainWindow) return;
+  const printers = await mainWindow.webContents.getPrintersAsync();
+  const system = `OS: ${os.platform()} - ${os.release()}. App version: ${version}`;
+  if (printers.length > 0) {
+    const printersNames = printers
+      .map((printer) => printer.displayName)
+      .join(', ');
+    const firstMsg = `${system}. Found ${printers.length} printers: ${printersNames}`;
+    log.info(firstMsg);
+    event.reply('ipc-logs', firstMsg);
+  } else {
+    const firstMsg = `${system}. No printers found on application start`;
+    log.info(firstMsg);
+    event.reply('ipc-logs', firstMsg);
   }
 });
 
@@ -300,17 +329,6 @@ const createWindow = async () => {
         : path.join(__dirname, '../../.erb/dll/preload.js'),
     },
   });
-
-  const printers = await mainWindow.webContents.getPrintersAsync();
-  const system = `OS: ${os.platform()} - ${os.release()}. App version: ${version}`;
-  if (printers.length > 0) {
-    const printersNames = printers
-      .map((printer) => printer.displayName)
-      .join(', ');
-    log.info(`${system}. Found ${printers.length} printers:`, printersNames);
-  } else {
-    log.info(`${system}. No printers found on application start`);
-  }
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 

@@ -3,6 +3,8 @@ import io from 'socket.io-client';
 
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
+import { sendLog } from './sendLog';
+import { BACKEND_SERVER } from './constants';
 
 let intervalId: ReturnType<typeof setInterval>;
 let inCall = false;
@@ -15,7 +17,6 @@ const sendZPLtoPrint = async (data: any) => {
 
 interface IWorklogProps {
   handleLogout(): void;
-  BACKEND: string;
   accessToken: string;
   refreshToken: string;
 }
@@ -30,7 +31,6 @@ export default function ({
   handleLogout,
   accessToken,
   refreshToken,
-  BACKEND,
 }: IWorklogProps) {
   const ioRef = useRef<null | any>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -44,7 +44,7 @@ export default function ({
   }, [accessToken]);
 
   useEffect(() => {
-    ioRef.current = io(BACKEND, {
+    ioRef.current = io(BACKEND_SERVER, {
       transports: ['websocket'],
       reconnectionDelayMax: 30000,
     });
@@ -53,7 +53,7 @@ export default function ({
       window.electron.ipcRenderer.log('APP_socket_auth-error', error);
 
       try {
-        const res = await fetch(`${BACKEND}/v2/authorize`, {
+        const res = await fetch(`${BACKEND_SERVER}/v2/authorize`, {
           method: 'POST',
           headers: new Headers({
             Accept: 'application/json',
@@ -79,6 +79,12 @@ export default function ({
         // Probably try to re-init socket?
       } catch (err) {
         window.electron.ipcRenderer.log('APP_socket_auth-error-promise', err);
+        if (err instanceof Error) {
+          sendLog(err?.message);
+        }
+        if (err instanceof String) {
+          sendLog(err);
+        }
         handleLogout();
       }
     });
@@ -136,6 +142,11 @@ export default function ({
           message: `${arg}`,
         },
       ]);
+      sendLog(arg);
+    });
+
+    window.electron.ipcRenderer.on('send-logs', (arg) => {
+      sendLog(arg);
     });
 
     window.electron.ipcRenderer.on('zpl-print-finished', () => {

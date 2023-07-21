@@ -2,7 +2,7 @@
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
-export type Channels = 'ipc-logs' | 'zpl-print-finished';
+export type Channels = 'ipc-logs' | 'zpl-print-finished' | 'send-logs';
 
 const electronHandler = {
   isMac: process.platform === 'darwin',
@@ -28,6 +28,9 @@ const electronHandler = {
     },
     printLabel(data: any) {
       ipcRenderer.send('label', data);
+    },
+    info() {
+      ipcRenderer.send('info');
     },
   },
 };

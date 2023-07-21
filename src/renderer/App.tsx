@@ -5,8 +5,7 @@ import './App.css';
 
 import OutvioLogo from './OutvioLogo';
 import Worklog from './Worklog';
-
-const BACKEND = 'https://api.outvio.com';
+import { BACKEND_SERVER } from './constants';
 
 function RootModule() {
   const apiKeyInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +26,7 @@ function RootModule() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${BACKEND}/v2/authorize`, {
+      const response = await fetch(`${BACKEND_SERVER}/v2/authorize`, {
         method: 'POST',
         headers: new Headers({
           Accept: 'application/json',
@@ -97,6 +96,12 @@ function RootModule() {
     }
   }, []);
 
+  useEffect(() => {
+    if (view === 'work') {
+      window.electron.ipcRenderer.info();
+    }
+  }, [view]);
+
   return (
     <div className={view === 'work' ? 'worklogContainer' : 'container'}>
       <div className="worklogLogo">
@@ -128,7 +133,6 @@ function RootModule() {
           handleLogout={handleLogout}
           accessToken={accessToken}
           refreshToken={refreshToken}
-          BACKEND={BACKEND}
         />
       )}
     </div>
