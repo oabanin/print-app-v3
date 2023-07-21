@@ -135,19 +135,19 @@ ipcMain.on('label', async (event, data) => {
       // ZPL AND PDF
       log.info(file, fileArgs);
       try {
-        await execFileAsync(file, fileArgs);
+        const { stdout, stderr } = await execFileAsync(file, fileArgs);
+        if (stderr) {
+          log.info('print error', stderr);
+          event.reply('ipc-logs', `Error: ${stderr}`);
+        } else {
+          log.info('print result', stdout);
+          // event.reply('ipc-logs', stdout);
+        }
       } catch (error) {
         log.info('print error', error);
         event.reply('ipc-logs', `Error: ${error}`);
       }
-      // const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
-      // if (error) {
-      //   log.info('print error', stderr);
-      //   event.reply('ipc-logs', `Error: ${stderr}`);
-      // } else {
-      //   log.info('print result', stdout);
-      //   // event.reply('ipc-logs', stdout);
-      // }
+
       return;
     }
 
