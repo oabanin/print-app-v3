@@ -28,11 +28,31 @@ npm start
 
 ## Packaging for Production
 
+Each version needs to be packaged on the platform where it'll be used. For Windows, build on Windows, for MacOS, build on a mac.
+
+Command: `yarn package`. Installer will be generated in the `release/build` folder.
+
+The new files will need to be uploaded to S3 and need to update the links inside the app UI as well.
+
 To package apps for the local platform:
 
 ```bash
 npm run package
 ```
+
+## Testing
+
+- Look for the `BACKEND` variable to switch which environment the app connects to for testing.
+
+- If you are on macOS, you can use VirtualBox for testing and packaging on windows. This can help with setting up a Win 11 virtualbox (https://www.minitool.com/news/how-to-install-windows-11-virtualbox.html). You may need to use fixes from this (https://www.minitool.com/news/this-pc-cant-run-windows-11-on-virtualbox.html). Easiest to share files between host and VM is to enable shared folders.
+
+## Debugging
+
+Logging provided by `electron-log`. Log file locations:
+
+- macOS: ~/Library/Logs/outvio-printing-app/main.log
+- Windows: %USERPROFILE%\AppData\Roaming\outvio-printing-app\logs\main.log
+
 
 ## Docs
 
