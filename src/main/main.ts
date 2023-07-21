@@ -227,13 +227,13 @@ ipcMain.on('label', async (event, data) => {
           return;
         }
 
-        // const result = await device.transferOut(
-        //   endpointNumberOUT,
-        //   label as ArrayBuffer
-        // );
+        const result = await device.transferOut(
+          endpointNumberOUT,
+          label as ArrayBuffer
+        );
         if (device.opened) await device.close();
-        // log.info('Result:', result);
-        await delay(1000);
+        log.info('Result:', result);
+        // await delay(1000);
 
         event.reply('zpl-print-finished');
       } catch (e) {
