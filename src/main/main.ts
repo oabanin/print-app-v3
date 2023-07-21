@@ -21,17 +21,13 @@ import os from 'os';
 import { promises as fs } from 'fs';
 import * as util from 'node:util';
 
+import { execFile } from 'child_process';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-
-const { execFile } = require('node:child_process');
 
 const webusb = new WebUSB({
   allowAllDevices: true,
 });
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 const execFileAsync = util.promisify(execFile);
 class AppUpdater {
