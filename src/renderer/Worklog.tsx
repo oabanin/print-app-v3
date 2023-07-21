@@ -152,7 +152,6 @@ export default function ({
     intervalId = setInterval(callPrintQueue, 400);
 
     return () => {
-      // clearTimeout(timeout);
       clearInterval(intervalId);
       queue = [];
       if (ioRef.current) {

@@ -16,11 +16,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { print as macPrint } from 'unix-print';
 import fetch from 'node-fetch';
 import { WebUSB } from 'usb';
-
 import os from 'os';
 import { promises as fs } from 'fs';
 import { execFile } from 'child_process';
 import util from 'util';
+import { version } from '../../package.json';
 
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
@@ -45,11 +45,9 @@ const isWindows = os.platform() === 'win32';
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  log.info('The second instance has been launched. Forced to close');
   app.quit();
 } else {
   app.on('second-instance', () => {
-    // Someone tried to run a second instance, we should focus our window.
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
@@ -57,11 +55,9 @@ if (!gotTheLock) {
   });
 }
 
-// const labels = [];
-
 ipcMain.on('label', async (event, data) => {
   try {
-    log.info('IPC received label event', data);
+    log.info('APP Received label event', data);
 
     if (!mainWindow) {
       log.info('BrowserWindow is not found');
@@ -71,7 +67,7 @@ ipcMain.on('label', async (event, data) => {
     const printers = await mainWindow.webContents.getPrintersAsync();
 
     if (printers.length === 0) {
-      const msg = 'No printers found on printing';
+      const msg = 'No printers found';
       log.info(msg);
       event.reply('ipc-logs', msg);
       return;
@@ -111,21 +107,16 @@ ipcMain.on('label', async (event, data) => {
       : path.join(__dirname, '..', '..', 'bin');
 
     if (isZPL) {
-      log.info('ZPL branch');
       label = await res.text();
       file = path.join(pathToRawPrint, 'rawprint.exe');
       fileArgs = [defaultPrinter.name, saveFilePath];
       await fs.writeFile(saveFilePath, label);
-      // log.info('label', { label });
     } else {
-      log.info('PDF branch');
       file = path.join(pathToRawPrint, 'SumatraPDF-3.4.6-32.exe');
       fileArgs = ['-print-to-default', '-silent', saveFilePath];
-      label = await res.arrayBuffer(); // Don't know why this works.
+      label = await res.arrayBuffer();
       await fs.writeFile(saveFilePath, Buffer.from(label));
     }
-
-    log.info('Start printing');
 
     if (isWindows) {
       event.reply(
@@ -141,7 +132,6 @@ ipcMain.on('label', async (event, data) => {
           event.reply('ipc-logs', `Error: ${stderr}`);
         } else {
           log.info('print result', stdout);
-          // event.reply('ipc-logs', stdout);
         }
       } catch (error) {
         log.info('print error', error);
@@ -195,7 +185,7 @@ ipcMain.on('label', async (event, data) => {
 
         if (!device) {
           event.reply('ipc-logs', `No device found for printing`);
-          log.info('No device found for printing', device);
+          log.info('No device found for printing');
           event.reply('zpl-print-finished');
           return;
         }
@@ -205,7 +195,9 @@ ipcMain.on('label', async (event, data) => {
           `Default printer used for printing: ${device.manufacturerName} ${device.productName}`
         );
 
-        log.info('Printing via WebUsb Device on MacOS', device);
+        log.info(
+          `Printing via WebUsb Device on MacOS ${device.manufacturerName} ${device.productName}`
+        );
 
         if (!device.opened) await device.open();
         await device.selectConfiguration(1);
@@ -237,7 +229,6 @@ ipcMain.on('label', async (event, data) => {
         );
         if (device.opened) await device.close();
         log.info('Result:', result);
-        // await delay(1000);
 
         event.reply('zpl-print-finished');
       } catch (e) {
@@ -247,8 +238,8 @@ ipcMain.on('label', async (event, data) => {
         if (device.opened) await device.close();
         if (e instanceof Error) {
           event.reply('ipc-logs', e.message);
+          log.info('WebUsb ERROR:', e.message);
         }
-        log.info('WebUsb ERROR:', e);
         event.reply('zpl-print-finished');
       }
     }
@@ -290,8 +281,6 @@ const createWindow = async () => {
     await installExtensions();
   }
 
-  log.info(`OS: ${os.platform()} - ${os.release()}`);
-
   const RESOURCES_PATH = app.isPackaged
     ? path.join(process.resourcesPath, 'assets')
     : path.join(__dirname, '../../assets');
@@ -313,11 +302,14 @@ const createWindow = async () => {
   });
 
   const printers = await mainWindow.webContents.getPrintersAsync();
-
+  const system = `OS: ${os.platform()} - ${os.release()}. App version: ${version}`;
   if (printers.length > 0) {
-    log.info(`Printers:`, printers);
+    const printersNames = printers
+      .map((printer) => printer.displayName)
+      .join(', ');
+    log.info(`${system}. Found ${printers.length} printers:`, printersNames);
   } else {
-    log.info('No printers found on application start');
+    log.info(`${system}. No printers found on application start`);
   }
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
