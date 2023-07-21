@@ -44,6 +44,12 @@ export default function ({
   }, [accessToken]);
 
   useEffect(() => {
+    setTimeout(() => {
+      window.electron.ipcRenderer.info();
+    }, 2000);
+  }, []);
+
+  useEffect(() => {
     ioRef.current = io(BACKEND_SERVER, {
       transports: ['websocket'],
       reconnectionDelayMax: 30000,

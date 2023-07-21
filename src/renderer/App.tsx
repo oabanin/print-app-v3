@@ -96,12 +96,6 @@ function RootModule() {
     }
   }, []);
 
-  useEffect(() => {
-    if (view === 'work') {
-      window.electron.ipcRenderer.info();
-    }
-  }, [view]);
-
   return (
     <div className={view === 'work' ? 'worklogContainer' : 'container'}>
       <div className="worklogLogo">
