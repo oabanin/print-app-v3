@@ -19,17 +19,18 @@ import { WebUSB } from 'usb';
 
 import os from 'os';
 import { promises as fs } from 'fs';
-import * as util from 'node:util';
-
 import { execFile } from 'child_process';
+import util from 'util';
+
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+
+const execFileAsync = util.promisify(execFile);
 
 const webusb = new WebUSB({
   allowAllDevices: true,
 });
 
-const execFileAsync = util.promisify(execFile);
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
