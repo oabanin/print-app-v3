@@ -12,6 +12,8 @@ module.exports = {
     'no-shadow': 'off',
     '@typescript-eslint/no-shadow': 'error',
     'no-unused-vars': 'off',
+    'import/prefer-default-export': 'off',
+    'no-promise-executor-return': 'off',
     '@typescript-eslint/no-unused-vars': 'error',
   },
   parserOptions: {

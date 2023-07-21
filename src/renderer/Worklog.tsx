@@ -4,31 +4,14 @@ import io from 'socket.io-client';
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
 
-const queue: any = [];
+let intervalId: ReturnType<typeof setInterval>;
+let inCall = false;
+let queue: any = [];
 
-let timeout: ReturnType<typeof setTimeout>;
-
-const TimeoutBetweenPrintingInSec = 1;
-function processData(data: any) {
-  return new Promise((resolve) => {
-    setTimeout(async () => {
-      window.electron.ipcRenderer.printLabel(JSON.stringify(data));
-      resolve(data);
-    }, TimeoutBetweenPrintingInSec * 1000);
-  });
-}
-
-function insertQueue(msg: any) {
-  // called whenever a new message arrives
-  queue.push(msg);
-}
-
-function getFromQueue() {
-  if (queue.length > 0) {
-    return queue.shift();
-  }
-  return undefined;
-}
+const sendZPLtoPrint = async (data: any) => {
+  inCall = true;
+  window.electron.ipcRenderer.printLabel(JSON.stringify(data));
+};
 
 interface IWorklogProps {
   handleLogout(): void;
@@ -137,7 +120,11 @@ export default function ({
         },
       ]);
 
-      insertQueue(data);
+      if (isZPL && window.electron.isMac) {
+        queue.push(data);
+      } else {
+        window.electron.ipcRenderer.printLabel(JSON.stringify(data));
+      }
     });
 
     window.electron.ipcRenderer.on('ipc-logs', (arg) => {
@@ -151,29 +138,23 @@ export default function ({
       ]);
     });
 
-    (function executorService() {
-      return new Promise((resolve) => {
-        timeout = setTimeout(async () => {
-          const data = getFromQueue();
-          // console.log('Started processing', data);
-          if (data) {
-            const resp = await processData(data); // waiting for async processing of message to finish
-            resolve(resp);
-          }
-          resolve(undefined);
-        }, 2000);
-      })
-        .then(() => {
-          return true;
-        })
-        .catch(() => {})
-        .finally(() => {
-          executorService();
-        });
-    })();
+    window.electron.ipcRenderer.on('zpl-print-finished', () => {
+      inCall = false;
+    });
+
+    function callPrintQueue() {
+      if (!inCall && queue.length > 0) {
+        const data = queue.shift();
+        sendZPLtoPrint(data);
+      }
+    }
+
+    intervalId = setInterval(callPrintQueue, 400);
 
     return () => {
-      clearTimeout(timeout);
+      // clearTimeout(timeout);
+      clearInterval(intervalId);
+      queue = [];
       if (ioRef.current) {
         ioRef.current.disconnect();
       }

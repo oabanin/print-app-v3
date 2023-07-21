@@ -2,9 +2,10 @@
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
-export type Channels = 'ipc-logs';
+export type Channels = 'ipc-logs' | 'zpl-print-finished';
 
 const electronHandler = {
+  isMac: process.platform === 'darwin',
   ipcRenderer: {
     sendMessage(channel: Channels, ...args: unknown[]) {
       ipcRenderer.send(channel, ...args);
