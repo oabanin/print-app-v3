@@ -133,7 +133,7 @@ ipcMain.on('label', async (event, data) => {
         `Default printer used for printing: ${defaultPrinter.displayName}`
       );
       // ZPL AND PDF
-      log.info(file, fileArgs);
+      log.info(file);
       try {
         const { stdout, stderr } = await execFileAsync(file, fileArgs);
         if (stderr) {
