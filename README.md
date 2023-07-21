@@ -13,6 +13,8 @@
 
 Clone the repo and install dependencies:
 
+nvm use 18
+
 ```bash
 npm install
 ```
