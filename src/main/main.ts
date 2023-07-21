@@ -133,14 +133,21 @@ ipcMain.on('label', async (event, data) => {
         `Default printer used for printing: ${defaultPrinter.displayName}`
       );
       // ZPL AND PDF
-      const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
-      if (error) {
-        log.info('print error', stderr);
-        event.reply('ipc-logs', `Error: ${stderr}`);
-      } else {
-        log.info('print result', stdout);
-        // event.reply('ipc-logs', stdout);
+
+      try {
+        await execFileAsync(file, fileArgs);
+      } catch (error) {
+        log.info('print error', error);
+        event.reply('ipc-logs', `Error: ${error}`);
       }
+      // const { stdout, stderr, error } = await execFileAsync(file, fileArgs);
+      // if (error) {
+      //   log.info('print error', stderr);
+      //   event.reply('ipc-logs', `Error: ${stderr}`);
+      // } else {
+      //   log.info('print result', stdout);
+      //   // event.reply('ipc-logs', stdout);
+      // }
       return;
     }
 
